@@ -1,0 +1,12 @@
+# Ignore the large neural network model files
+*.tflite
+
+# Ignore Python environment folders
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Ignore hidden VS Code settings or temporary test artifacts
+.vscode/
+extracted_metadata/

@@ -1,0 +1,173 @@
+import time
+import collections
+import numpy as np
+import pyaudio
+import ai_edge_litert.interpreter as litert
+import RPi.GPIO as GPIO
+
+# ==========================================
+# HARDWARE INITIALIZATION
+# ==========================================
+BUZZER_PIN = 23  
+LED_PIN = 17
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
+GPIO.setup(LED_PIN, GPIO.OUT)       # 🚀 FIXED: Tells the Pi Pin 17 is an output channel!
+
+GPIO.output(BUZZER_PIN, GPIO.LOW) 
+GPIO.output(LED_PIN, GPIO.LOW)
+
+# ==========================================
+# 1. HARDWARE & AUDIO CONFIGURATION (OPTIMIZED FOR FREQUENCY)
+# ==========================================
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 48000  
+
+# 🚀 CHANGE THIS: Bump chunk size to 4096. 
+# This captures 256ms of continuous sound, letting low & mid frequencies develop fully!
+CHUNK = 4096  
+
+AUDIO_LABELS = ["class1", "class2", "class3", "class4", "class5", "class6", "class7"]
+
+p = pyaudio.PyAudio()
+stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE,
+                input=True, frames_per_buffer=CHUNK)
+
+# ==========================================
+# LOAD TFLITE MODEL
+# ==========================================
+model_path = "/home/user/iot_project/Models/mobilenetv2_audio.tflite"
+audio_interpreter = litert.Interpreter(model_path=model_path)
+audio_interpreter.allocate_tensors()
+
+audio_input_details = audio_interpreter.get_input_details()
+audio_output_details = audio_interpreter.get_output_details()
+expected_audio_shape = audio_input_details[0]['shape']
+
+# ==========================================
+# STATISTICAL MEMORY SETUP
+# ==========================================
+abnormal_history = collections.deque(maxlen=50)
+
+print("🔊 Audio Anomaly Isolation Test Engine Started.")
+print("👉 Let the system run silently for 5 seconds to calibrate the room baseline...")
+time.sleep(5)
+print("⚡ Calibration complete. Start testing your audio clips now!")
+
+try:
+    while True:
+        try:
+            raw_data = stream.read(CHUNK, exception_on_overflow=False)
+            signal_samples = np.frombuffer(raw_data, dtype=np.int16)
+        except IOError:
+            continue  
+
+        downsampled_samples = signal_samples[::3].astype(np.float32) / 32768.0
+
+        audio_tensor_input = np.zeros(expected_audio_shape, dtype=np.float32)
+        filled_length = min(len(downsampled_samples), audio_tensor_input.size)
+        audio_tensor_input.flat[:filled_length] = downsampled_samples[:filled_length]
+
+        audio_interpreter.set_tensor(audio_input_details[0]['index'], audio_tensor_input)
+        audio_interpreter.invoke()
+        raw_logits = audio_interpreter.get_tensor(audio_output_details[0]['index'])[0]
+
+        exp_logits = np.exp(raw_logits - np.max(raw_logits))
+        audio_probabilities = exp_logits / np.sum(exp_logits)
+
+        # ==========================================
+        # PLAN 2: BINARY POOL MATH & LIVE DISTRIBUTION
+        # ==========================================
+        normal_pool = audio_probabilities[0] + audio_probabilities[5] + audio_probabilities[6]
+        abnormal_pool = 1.0 - normal_pool
+
+        # 🚀 GATED MEMORY UPDATE FIX:
+        # Only feed the baseline memory if the room is currently acting normally.
+        # If we have history, check if this frame is a massive outlier BEFORE saving it.
+        is_anomaly = False
+        if len(abnormal_history) >= 30:
+            current_mean = np.mean(abnormal_history)
+            current_std = max(np.std(abnormal_history), 0.005)
+            temp_z = (abnormal_pool - current_mean) / current_std
+            
+            # If the noise is more than 1.2 standard deviations out, it's a threat.
+            # Freeze the history queue so the scream doesn't pollute the baseline!
+            if temp_z > 1.2 and abnormal_pool > 0.01:
+                is_anomaly = True
+
+        if not is_anomaly:
+            # Only remember the sound if it's normal background room noise
+            abnormal_history.append(abnormal_pool)
+        else:
+            print("🛑 [MEMORY SHIELD] Anomaly detected. Freezing baseline calibration updates!", end='\r')
+
+        # Wait until we have enough historical frames to compute standard deviation
+        if len(abnormal_history) >= 30:
+            mean_abnormal = np.mean(abnormal_history)
+            std_abnormal = np.std(abnormal_history)
+
+            z_score = (abnormal_pool - mean_abnormal) / std_abnormal
+
+            dist_string = " | ".join([f"{AUDIO_LABELS[i][:5]}: {audio_probabilities[i]*100:3.0f}%" for i in range(len(AUDIO_LABELS))])
+            print(f"Z: {z_score:5.1f}σ | AB_POOL: {abnormal_pool*100:3.0f}% || {dist_string}", end='\r')
+
+            # ==========================================
+            # 🚨 ALARM TRIGGER CONDITION
+            # ==========================================
+            # ==========================================
+            # 🚨 ALARM TRIGGER CONDITION (WITH TOP 2 CLASSES)
+            # ==========================================
+            # ==========================================
+            # 🚨 FIXED ALARM TRIGGER CONDITION (NO DUPLICATES)
+            # ==========================================
+            Z_THRESHOLD = 3.0
+            if z_score > Z_THRESHOLD and abnormal_pool > 0.01:
+                # 1. Get all indices sorted by probability (lowest to highest)
+                sorted_indices = list(np.argsort(audio_probabilities))
+                
+                # 2. Filter out the biased class 5 entirely from our ranking pool
+                if 5 in sorted_indices:
+                    sorted_indices.remove(5)
+                
+                # 3. Now safely pop the absolute highest remaining class
+                top1_idx = sorted_indices[-1]
+                top1_name = AUDIO_LABELS[top1_idx]
+                top1_prob = audio_probabilities[top1_idx] * 100
+
+                # 4. Pop the runner-up (which is guaranteed to be a different class now)
+                top2_idx = sorted_indices[-2]
+                top2_name = AUDIO_LABELS[top2_idx]
+                top2_prob = audio_probabilities[top2_idx] * 100
+
+                # 1. 🟢 TURN PINS ON
+                GPIO.output(BUZZER_PIN, GPIO.HIGH) 
+                GPIO.output(LED_PIN, GPIO.HIGH)        
+                print(f"\n⚡ [FLAGGED] Z-SCORE BREAKOUT: {z_score:.2f}σ")
+
+                print(f"🔥 [ALARM] STATISTICAL ANOMALY DETECTED!")
+                print(f"   🏆 1st Highest : {top1_name.upper()} ({top1_prob:.1f}%)")
+                print(f"   🥈 2nd Highest : {top2_name.upper()} ({top2_prob:.1f}%)")
+                print("")
+
+                # 2. ⏳ HOLD THE FLASH
+                time.sleep(0.5) 
+
+                # 3. 🔴 TURN PINS OFF
+                GPIO.output(BUZZER_PIN, GPIO.LOW)
+                GPIO.output(LED_PIN, GPIO.LOW)         
+                print(f"💤 [HARDWARE] PINS RESET TO LOW\n")
+                
+                time.sleep(1.0)
+
+        time.sleep(0.2)
+
+except KeyboardInterrupt:
+    print("\nStopping audio test engine cleanly.")
+    GPIO.output(BUZZER_PIN, GPIO.LOW)
+    GPIO.output(LED_PIN, GPIO.LOW)
+    GPIO.cleanup()
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
