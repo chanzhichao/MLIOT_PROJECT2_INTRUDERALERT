@@ -88,7 +88,7 @@ When facing this dilemma, an engineering shortcut may try to "gaslight" the chil
 >
 > **Removing the class** - Telling the child to ignore,
 >
-> Or straight up just create an even bigger dataset - Giving a child more math questions to solve, drilling to no end.
+> Or straight up just **create an even bigger dataset** - Giving a child more math questions to solve, drilling to no end.
 
 But suppressing that instinct is fundamentally wrong. If you tell the child their worldview is wrong, their imagination becomes limited, and fails to imagine beyond any creative intruder. If you force the child to blindly ignore the background, you destroy their situational awareness. If you give too much data, the child becomes confused. The moment the baseline shifts, the system becomes completely blind. 
 
