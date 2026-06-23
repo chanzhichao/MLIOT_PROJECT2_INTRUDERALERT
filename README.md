@@ -2,13 +2,13 @@
 Intruder alert using Passive Infrared Sensor, Camera and a Microphone
 
 One Thing I Learned from audio processing is this:
-- "How much MORE THAN normal is considered abnormal?"
+> "How much MORE THAN normal is considered abnormal?"
 
 So an analogy for AI classifying audio is this:
 "What is 1 + 1"?
-A: More than 1 (Confidence = 70%)
-B: Around 2 (Confidence = 20%)
-C - G: Clearly Wrong Answers (Confidence ~2%)
+- A: More than 1 (Confidence = 70%)
+- B: Around 2 (Confidence = 20%)
+- C - G: Clearly Wrong Answers (Confidence ~2%)
 
 The analogy is that background audio is considered something that is persistent,
 but suddenly when there is an anomaly, the background audio still remains (does not disappear), 
