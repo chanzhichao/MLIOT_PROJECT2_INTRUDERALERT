@@ -14,8 +14,15 @@ Standard PIR sensors yield binary high/low states that fluctuate rapidly when a 
 
 ### B. High-Fidelity Microphone & Audio Processing
 * **Hardware Sample Rate:** Hardcoded strictly at **$48000 \text{ Hz}$** to match the target device hardware capabilities and prevent downsampling driver exceptions.
-* **Acoustic Sliding Window:** Audio arrays are evaluated using a moving $1$ to $2$-second sliding window framework. 
-  > 💡 **The Structural Reason:** Without an integrated windowing matrix, the deployment framework evaluates minute sound *bits* rather than sequential frequency signatures. For example, a glass break event consists of a highly distinct *High $\to$ Low $\to$ High* frequency transition pattern. Evaluating single static moments reduces the system to matching individual isolated pitches—destroying the predictive capability of the underlying TFLite model. It is the programmatic equivalent of demanding a human identify a complex classical symphony from an isolated individual note rather than an entire musical measure.
+* **IMPORTANT: 1-2s Acoustic Sliding Window:** Audio arrays are evaluated using a moving $1$ to $2$-second sliding window framework. 
+  > 💡 **The Structural Reason:** Without an integrated windowing matrix, the deployment framework evaluates minute sound *bits* rather than sequential frequency signatures.
+  >
+  > For example, a glass break event consists of a highly distinct *High $\Leftrightarrow$ Low $\Leftrightarrow$ High* frequency transition pattern. Evaluating single static moments reduces the system to matching individual isolated pitches—destroying the predictive capability of the underlying TFLite model.
+  >
+  > It is the programmatic equivalent of demanding a human identify a complex classical symphony from an isolated individual note rather than an entire musical measure.
+  >
+  > Like those videos where the person goes "Try to guess the classical piece from one note / one chord" 🎹🎵︎
+  > 
 * **Max Delta Decibel Layering ($\Delta \text{ dB}$):** The pipeline independently tracks real-time differential amplitude metrics parallel to the TFLite inference array. This introduces raw volume acceleration as an independent feature layer. If an edge-case sound signature bypasses frequency recognition, a sharp, sudden structural volume spike will still trigger system escalations.
 
 ### C. Spatial Camera Boundaries (Tripwire Architecture)
