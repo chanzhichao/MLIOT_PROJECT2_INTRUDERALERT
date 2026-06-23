@@ -25,3 +25,5 @@ That's very human-like, and shouldn't be something that is wrong.
 
 Think of a child solving the math question above, two likely answers are presented. 
 How does the child go "I'm confident about the answer A, but this answer B is very disturbing"
+
+Do you gaslight the child into saying "Oh background noise, don't listen to it, you will get biased!", or is there another way?
