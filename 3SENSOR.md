@@ -41,7 +41,7 @@ $$\text{Total Acoustic Profile} = \text{Background Baseline} + \text{Additive An
 
 This forces the AI model into an abstract statistical loop similar to asking a child, *"What is 1 + 1?"*:
 * **Choice A:** *"More than 1"* (Confidence: **70%**)
-* **Choice B:** *"Exactly 2"* (Confidence: **20%**)
+* **Choice B:** *"Exactly or Around 2"* (Confidence: **20%**)
 
 From a structural perspective, Choice A is entirely valid—the machine identifies the overwhelming background data with massive statistical predictability and treats the anomaly as negligible noise. However, Choice B is the target event we must capture. 
 
@@ -79,7 +79,7 @@ By applying this standard deviation shift, we are effectively modifying the chil
 
 ### 🍒 The "Cognitive Dissonance" Analogy
 
-To fully appreciate this architecture, consider a child who has just successfully solved 100 traditional, pristine math questions in a row. Suddenly, they are presented with a variation where the answer to $1 + 1$ is presented as *"Around 2"*. 
+To fully appreciate this architecture, consider a child who has just successfully solved 100 traditional, pristine math questions in a row. Suddenly, they are presented with a variation where the answer to $1 + 1$ is presented as *"Exactly or Around 2"*. 
 
 The child does not get stuck because they lack the intelligence to solve it, nor because they are looking for an easy out. They freeze because **they recognize that this question violates the traditional baseline of the previous 100 examples.** They sense a hidden variance—a shift in context.
 
