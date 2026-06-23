@@ -10,7 +10,7 @@ So an analogy for AI classifying audio is this:
 
 - A: More than 1 (Confidence = 70%)
 
-- B: Around 2 (Confidence = 20%)
+- B: Exactly or Around 2 (Confidence = 20%)
   
 - C - G: Clearly Wrong Answers (Confidence ~2%)
 
