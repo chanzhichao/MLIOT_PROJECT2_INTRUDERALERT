@@ -79,7 +79,7 @@ Categories=Utility;
 # Safely restart the hardware system to apply changes
 sudo reboot
 ```
-Upon reboot, **Wait 1-2 minutes** for the pi to reboot and autostart its python code. Troubleshooting tips below if the buzzer/LED does not give any output.
+Upon reboot, **Wait 1-2 minutes** for the pi to reboot and autostart its python code. Troubleshooting tips below if the buzzer/LED does not give any output. Please reconnect via `ssh user@MLIOTPROJECT2.local` and enter your password again, reestablishing your connection to the raspberry pi.
 
 ```bash
 # Safely power down the device fully
