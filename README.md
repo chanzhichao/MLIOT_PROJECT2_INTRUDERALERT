@@ -130,3 +130,10 @@ sudo killall -9 python python3
 
 # Hard reset the Linux UVC (USB Video Class) driver stack to clear frozen hardware states
 sudo rmmod uvcvideo && sudo modprobe uvcvideo
+```
+### Direct Manual Execution Loop
+To run the updated real-time multithreaded architecture manually with clean console logs, use the absolute target binary path:
+```bash
+/usr/bin/python /home/user/iot_project/BESTMODEL/Optimized_ContinuousPublish.py
+```
+
