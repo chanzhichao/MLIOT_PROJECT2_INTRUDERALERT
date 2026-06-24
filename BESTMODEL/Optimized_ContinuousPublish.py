@@ -366,7 +366,7 @@ try:
                 "camera": {
                     "confidence_pct": round(cam_confidence, 1),
                     "aoi_breached": aoi_active,
-                    "saved_snapshot": filename
+                    "saved_snapshot": f"http://172.20.10.2:8080/camera_alerts/tripwire_breach_{timestamp_fs}.jpg"
                 }
             }
 
