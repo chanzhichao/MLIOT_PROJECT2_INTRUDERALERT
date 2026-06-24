@@ -112,3 +112,21 @@ The Solution: We manually flushed the cached credentials on the host laptop's SS
 ssh-keygen -f "~/.ssh/known_hosts" -R "MLIOTPROJECT2.local"
 ```
 Clearing the old key allowed the laptop to safely accept the new identity token upon the next connection attempt.
+
+
+# ALSO, CHECK IF THERE ARE BACKGROUND RUNNING PROCESSES IN PI
+```bash
+# List all active Python processes with their full paths:
+ps aux | grep python
+
+# Identify which process ID (PID) is actively locking the camera node:
+sudo lsof /dev/video0
+
+# List all system-assigned V4L2 video devices:
+v4l2-ctl --list-devices
+
+# Force kill all lingering Python executions cleanly
+sudo killall -9 python python3
+
+# Hard reset the Linux UVC (USB Video Class) driver stack to clear frozen hardware states
+sudo rmmod uvcvideo && sudo modprobe uvcvideo
