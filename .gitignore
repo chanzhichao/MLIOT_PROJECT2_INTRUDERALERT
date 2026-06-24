@@ -1,6 +1,9 @@
 # Ignore the large neural network model files
 *.tflite
-
+BESTMODEL/camera_alerts/*
+BESTMODEL/audio_alerts/*
+*.jpg
+*.wav
 # Ignore Python environment folders
 venv/
 .venv/
