@@ -182,7 +182,6 @@ try:
         # Downsample and run quantization process
         # From your main capture loop:
         downsampled_samples = signal_samples[::3].astype(np.float32) / 32768.0
-        audio_rolling_buffer.extend(downsampled_samples)
         quantized_samples = quantize_audio(downsampled_samples)
         audio_rolling_buffer.extend(quantized_samples)
 
@@ -299,8 +298,6 @@ try:
             current_time_snap = time.time()
             
             if current_time_snap - last_capture_time > CAPTURE_COOLDOWN:
-                timestamp_fs = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-
                 # 📷 Save the camera frame instantly
                 if annotated_frame is not None:
                     box_color = (0, 0, 255) if aoi_active else (0, 255, 0)
