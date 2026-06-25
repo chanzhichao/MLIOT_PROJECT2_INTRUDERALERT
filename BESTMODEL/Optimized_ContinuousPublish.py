@@ -75,7 +75,6 @@ CHUNK = 2048
 
 ONE_SECOND_TOTAL_SAMPLES = 16000
 audio_rolling_buffer = collections.deque(maxlen=(3*ONE_SECOND_TOTAL_SAMPLES))
-# 48000 samples/sec * 3 seconds = 144000 total native samples
 audio_history_48k = collections.deque(maxlen=3*3*ONE_SECOND_TOTAL_SAMPLES)  # 3 seconds of 48kHz samples
 abnormal_history = collections.deque(maxlen=50)
 
@@ -116,6 +115,7 @@ pir_expiration_time = 0.0
 # Heartbeat interval telemetry control
 last_heartbeat_time = 0
 HEARTBEAT_INTERVAL = 1.0  # seconds
+last_valid_db = 0.0       # 🟢 FIX: Initialized baseline volume variable globally
 
 def preprocess_frame(frame):
     resized = cv2.resize(frame, (640, 640))
@@ -134,14 +134,7 @@ def check_intersection(box_a, box_b):
     return inter_area > 0
 
 def quantize_audio(samples_float32):
-    """
-    Quantizes float32 array (-1.0 to 1.0) into int8 range (-128 to 127) 
-    for Edge TPU / Fixed-point model compatibility, then returns normalized float32 
-    if required by your interpreter, or raw quantized states.
-    """
     quantized_int8 = np.clip(samples_float32 * 127.0, -128, 127).astype(np.int8)
-    # Dequantize or map back depending on what your specific .tflite input expected type is.
-    # If your model takes float32 but you wanted a quantized simulation pipeline:
     return quantized_int8.astype(np.float32) / 127.0
 
 print("🏠 High-Performance Fused Security Engine Active & Calibrating...")
@@ -162,7 +155,6 @@ try:
 
         # 🟢 STEP 2: AUDIO MIC CAPTURE WITH BUZZER IMMUNITY
         try:
-            # Read current audio data
             raw_data = stream.read(CHUNK, exception_on_overflow=False)
             signal_samples = np.frombuffer(raw_data, dtype=np.int16)
             audio_history_48k.extend(signal_samples) 
@@ -177,12 +169,13 @@ try:
         if GPIO.input(BUZZER_PIN) == GPIO.HIGH:
             current_db = last_valid_db
         else:
-            last_valid_db = current_db  # Continually track real room noise when buzzer is off
+            last_valid_db = current_db  
 
         # Downsample and run quantization process
-        # From your main capture loop:
         downsampled_samples = signal_samples[::3].astype(np.float32) / 32768.0
         quantized_samples = quantize_audio(downsampled_samples)
+        
+        # 🟢 FIX: Only push once to avoid timeline shifting / duplication bugs
         audio_rolling_buffer.extend(quantized_samples)
 
         if len(audio_rolling_buffer) < ONE_SECOND_TOTAL_SAMPLES:
@@ -239,6 +232,7 @@ try:
         ret, frame = video_capture.read()
         cam_confidence = 0.0
         aoi_active = False
+        annotated_frame = None
 
         if ret:
             annotated_frame = cv2.resize(frame, (640, 640))
@@ -269,33 +263,35 @@ try:
                 "z_score": round(float(z_score), 2),
                 "current_db": round(float(current_db), 1),
                 "cam_confidence": round(float(cam_confidence), 1),
-                "pir_active": int(pir_active)  # Quantized binary representation (1 or 0)
+                "pir_active": int(pir_active)
             }
             try:
                 mqtt_queue.put_nowait((MQTT_TELEMETRY_TOPIC, heartbeat_payload))
             except queue.Full:
-                pass # Prevent memory leakage if background worker hangs
+                pass 
             last_heartbeat_time = current_time
 
         # ==========================================
         # 🚨 STEP 4: THE 3 PATHWAY THRESHOLD EVALUATION
         # ==========================================
         Z_THRESHOLD = 2.0           
-        DECIBEL_TRIGGER_LIMIT = 80.0 
+        DECIBEL_TRIGGER_LIMIT = 80.0  
 
         cond_camera = (cam_confidence > 80.0) and aoi_active
         cond_audio_spike = z_score > Z_THRESHOLD
         cond_pir_decibel = pir_active and (current_db > DECIBEL_TRIGGER_LIMIT)
 
-        # MULTI-PATHWAY ALARM MASTER GATE EXECUTION
         if cond_camera or cond_audio_spike or cond_pir_decibel:
             
-            # 1. Fire hardware alerts instantly for real-time responsiveness
+            # Fire hardware alerts instantly for real-time responsiveness
             GPIO.output(BUZZER_PIN, GPIO.HIGH) 
             GPIO.output(LED_PIN, GPIO.HIGH)        
 
             filename = "None"  
             current_time_snap = time.time()
+            
+            # 🟢 FIX: Scope expanded to top level of execution block to resolve missing reference crashes
+            timestamp_fs = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             
             if current_time_snap - last_capture_time > CAPTURE_COOLDOWN:
                 # 📷 Save the camera frame instantly
@@ -308,11 +304,7 @@ try:
                     filename = f"/home/user/iot_project/BESTMODEL/camera_alerts/tripwire_breach_{timestamp_fs}.jpg"
                     cv2.imwrite(filename, annotated_frame)
                 
-                # =========================================================
-                # 🎙️ FIXED: POST-TRIGGER CAPTURE DELAY (CENTERING HOOK)
-                # =========================================================
-                # The climax just happened. We explicitly wait 1.5 seconds 
-                # while reading chunks to let the post-event sound roll into our queue.
+                # 🎙️ POST-TRIGGER CAPTURE DELAY (CENTERING HOOK)
                 post_trigger_duration = 1.5
                 start_wait = time.time()
                 try:
@@ -324,8 +316,6 @@ try:
                     pass
 
                 audio_filename = f"/home/user/iot_project/BESTMODEL/audio_alerts/audio_breach_{timestamp_fs}.wav"
-                
-                # Now freeze the timeline! The trigger is now exactly 1.5s back (dead center)
                 native_buffer = np.array(audio_history_48k)
                 
                 if len(native_buffer) >= 144000:
@@ -336,7 +326,8 @@ try:
                 # Write out the perfectly centered 3-second audio asset
                 wav.write(audio_filename, 48000, audio_window)
                 
-                last_capture_time = current_time_snap
+                # 🟢 FIX: Explicitly evaluate completion time post-delay to prevent truncated cooldown windows
+                last_capture_time = time.time()
 
             tripped_by = []
             if cond_camera: tripped_by.append("CAMERA")
@@ -347,7 +338,7 @@ try:
             now = datetime.datetime.now()
             time_string = now.strftime('%d%m%y %H%M%S')
 
-            # Build alert payload including the snapshot raw audio snapshot list
+            # Build alert payload
             alert_payload = {
                 "timestamp": time_string,
                 "tripped_pathways": tripped_by,
@@ -357,7 +348,7 @@ try:
                     "max_delta_db": round(float(current_db), 1),
                     "best_class_1": f"{top1_name.upper()} ({top1_prob:.1f}%)",
                     "best_class_2": f"{top2_name.upper()} ({top2_prob:.1f}%)",
-                    "raw_window_samples": full_second_snapshot.tolist()  # Retains audio trace that caused alert
+                    "raw_window_samples": full_second_snapshot.tolist()  
                 },
                 "pir_detected": bool(pir_active),
                 "camera": {
@@ -367,7 +358,6 @@ try:
                 }
             }
 
-            # Ship to queue asynchronously without lagging system processing loop
             try:
                 mqtt_queue.put_nowait((MQTT_ALARM_TOPIC, alert_payload))
             except queue.Full:
@@ -395,9 +385,7 @@ try:
             except IOError:
                 pass
 
-            # Clear out your downsampled rolling buffer so old echoes don't linger
             audio_rolling_buffer.clear()
-            
             time.sleep(1.0) # Post-alarm stabilization cooldown
 
         time.sleep(0.02)
